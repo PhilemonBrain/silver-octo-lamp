@@ -3,6 +3,7 @@ package main
 import (
 	// "crypto/sha1"
 	// "encoding/hex"
+
 	"io"
 	"log"
 	"os"
@@ -48,6 +49,9 @@ func (store *Store) writeStream(key string, r io.Reader) error {
 	}
 
 	n, err := io.Copy(f, r)
+	if err != nil {
+		return err
+	}
 	log.Printf("written %d bytes to disk: %s", n, pathname)
 
 	return nil
