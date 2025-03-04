@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net"
-	"sync"
 )
 
 // TCPPeer represents a node in a TCP connection
@@ -42,8 +41,7 @@ type TCPTransport struct {
 
 	rpcChan chan RPC
 
-	mu    sync.RWMutex
-	peers map[net.Addr]Peer
+	onPeer func() error
 }
 
 func NewTCPTransport(opts TCPTransportOptions) *TCPTransport {
@@ -93,18 +91,30 @@ type Temp struct{}
 func (t *TCPTransport) handleConn(conn net.Conn) {
 	peer := NewTCPPeer(conn, true)
 
+	var err error
+	defer func() {
+		fmt.Printf("dropping peer connection: %s", err)
+		conn.Close()
+	}()
+
 	if err := t.ShakeHands(peer); err != nil {
 		fmt.Println("doingn somehting wrong")
 		conn.Close()
 		return
 	}
 
+	if t.onPeer != nil {
+		if err := t.onPeer(); err != nil {
+			return
+		}
+	}
+
 	rpc := RPC{}
 
+	//READ loop
 	for {
 		if err := t.Decoder.Decode(conn, &rpc); err != nil {
-			fmt.Printf("TCP error %s/n", err)
-			continue
+			return
 		}
 		rpc.From = conn.RemoteAddr()
 		t.rpcChan <- rpc
