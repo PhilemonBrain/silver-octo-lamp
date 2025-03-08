@@ -1,23 +1,49 @@
 package main
 
 import (
-	// "crypto/sha1"
-	// "encoding/hex"
-
+	"crypto/sha1"
+	"encoding/hex"
+	"fmt"
 	"io"
 	"log"
 	"os"
+	"strings"
 )
 
-// func CASPathTransformFunc(key string){
-// 	hash := sha1.Sum([]byte(key))
-// 	hashStr := hex.EncodeToString(hash[:])
-// }
+type PathTransportFunc func(string) PathKey
 
-type PathTransportFunc func(string) string
+func CASPathTransportFunc(key string) PathKey {
+	hash := sha1.Sum([]byte(key))
+	hashString := hex.EncodeToString(hash[:])
+
+	blockSize := 5
+	sliceLen := len(hashString) / blockSize
+
+	paths := make([]string, sliceLen)
+
+	for i := 0; i < sliceLen; i++ {
+		from, to := i*blockSize, (i*blockSize)+blockSize
+		paths[i] = hashString[from:to]
+	}
+
+	return PathKey{
+		PathName: strings.Join(paths, "/"),
+		FileName: hashString,
+	}
+
+}
 
 type Store struct {
 	StoreOpts
+}
+
+type PathKey struct {
+	PathName string
+	FileName string
+}
+
+func (p PathKey) FullPath() string {
+	return fmt.Sprintf("%s/%s", p.PathName, p.FileName)
 }
 
 type StoreOpts struct {
@@ -34,16 +60,15 @@ func NewStore(opts StoreOpts) *Store {
 	}
 }
 
-func (store *Store) writeStream(key string, r io.Reader) error {
+func (s *Store) writeStream(key string, r io.Reader) error {
 
-	pathname := store.pathTransformFunc(key)
-	if err := os.Mkdir(pathname, os.ModePerm); err != nil {
+	pathKey := s.pathTransformFunc(key)
+	if err := os.MkdirAll(pathKey.PathName, os.ModePerm); err != nil {
 		return err
 	}
 
-	filename := "randomfile"
-	pathAndFilename := pathname + "/" + filename
-	f, err := os.Create(pathAndFilename)
+	fullPath := pathKey.FullPath()
+	f, err := os.Create(fullPath)
 	if err != nil {
 		return err
 	}
@@ -52,7 +77,7 @@ func (store *Store) writeStream(key string, r io.Reader) error {
 	if err != nil {
 		return err
 	}
-	log.Printf("written %d bytes to disk: %s", n, pathname)
+	log.Printf("written %d bytes to disk: %s", n, pathKey.FileName)
 
 	return nil
 }
