@@ -47,6 +47,16 @@ func (p PathKey) FullPath() string {
 	return fmt.Sprintf("%s/%s", p.PathName, p.FileName)
 }
 
+func (p PathKey) RootFolder() string {
+	path := strings.Split(p.PathName, "/")
+
+	if len(path) == 0 {
+		return ""
+	}
+	rootFolder := path[0]
+	return rootFolder
+}
+
 type StoreOpts struct {
 	pathTransformFunc PathTransportFunc
 }
@@ -59,6 +69,16 @@ func NewStore(opts StoreOpts) *Store {
 	return &Store{
 		StoreOpts: opts,
 	}
+}
+
+func (s *Store) Delete(key string) error {
+	pathKey := s.pathTransformFunc(key)
+
+	defer func() {
+		log.Printf("deleted [%s] from disk", pathKey.FileName)
+	}()
+	path := pathKey.RootFolder()
+	return os.RemoveAll(path)
 }
 
 func (s *Store) Read(key string) (io.Reader, error) {
