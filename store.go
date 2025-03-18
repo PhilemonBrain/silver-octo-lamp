@@ -58,6 +58,8 @@ func (p PathKey) RootFolder() string {
 }
 
 type StoreOpts struct {
+	// Root is the base folder for all files and folders to be saved
+	Root              string
 	pathTransformFunc PathTransportFunc
 }
 
@@ -71,6 +73,10 @@ var DefaultPathTransformFunc = func(key string) PathKey {
 func NewStore(opts StoreOpts) *Store {
 	if opts.pathTransformFunc == nil {
 		opts.pathTransformFunc = DefaultPathTransformFunc
+	}
+
+	if len(opts.Root) == 0 {
+		opts.Root = "home"
 	}
 	return &Store{
 		StoreOpts: opts,
@@ -101,13 +107,15 @@ func (s *Store) Read(key string) (io.Reader, error) {
 
 func (s *Store) readStream(key string) (io.ReadCloser, error) {
 	pathKey := s.pathTransformFunc(key)
-	return os.Open(pathKey.FullPath())
+	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+	return os.Open(fullPathWithRoot)
 }
 
 func (s *Store) writeStream(key string, r io.Reader) error {
 
 	pathKey := s.pathTransformFunc(key)
-	if err := os.MkdirAll(pathKey.PathName, os.ModePerm); err != nil {
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.PathName)
+	if err := os.MkdirAll(pathNameWithRoot, os.ModePerm); err != nil {
 		return err
 	}
 
