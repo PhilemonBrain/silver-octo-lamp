@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/sha1"
 	"encoding/hex"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -57,6 +58,17 @@ func (p PathKey) RootFolder() string {
 	return rootFolder
 }
 
+func (s *Store) Has(key string) bool {
+	pathKey := s.pathTransformFunc(key)
+	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+
+	_, err := os.Stat(fullPathWithRoot)
+	if (errors.Is(err, &os.PathError{})) {
+		return false
+	}
+	return true
+}
+
 type StoreOpts struct {
 	// Root is the base folder for all files and folders to be saved
 	Root              string
@@ -89,8 +101,8 @@ func (s *Store) Delete(key string) error {
 	defer func() {
 		log.Printf("deleted [%s] from disk", pathKey.FileName)
 	}()
-	path := pathKey.RootFolder()
-	return os.RemoveAll(path)
+	pathNameWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.RootFolder())
+	return os.RemoveAll(pathNameWithRoot)
 }
 
 func (s *Store) Read(key string) (io.Reader, error) {
@@ -119,8 +131,8 @@ func (s *Store) writeStream(key string, r io.Reader) error {
 		return err
 	}
 
-	fullPath := pathKey.FullPath()
-	f, err := os.Create(fullPath)
+	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
+	f, err := os.Create(fullPathWithRoot)
 	if err != nil {
 		return err
 	}
