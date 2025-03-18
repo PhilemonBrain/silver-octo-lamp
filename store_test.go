@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"testing"
 )
@@ -20,44 +21,50 @@ func TestPathTransformFunc(t *testing.T) {
 }
 
 func TestStore(t *testing.T) {
-	opts := StoreOpts{
-		pathTransformFunc: CASPathTransportFunc,
-	}
-	s := NewStore(opts)
-	key := "randkomTestingKeviu34f09j490fj94f3y"
+	s := createNewStore()
+	defer tearDown(t, s)
 
-	data := []byte("this is the actual contents to be written to file")
-	if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
-		t.Error(err)
-	}
+	for i := 0; i < 50; i++ {
+		key := fmt.Sprintf("randkomTestingKeviu34f09j490fj94f3y%d", i)
 
-	if ok := s.Has(key); !ok {
-		t.Errorf("expected to have key %s", key)
-	}
+		data := []byte("this is the actual contents to be written to file")
+		if err := s.writeStream(key, bytes.NewReader(data)); err != nil {
+			t.Error(err)
+		}
 
-	f, err := s.Read(key)
-	if err != nil {
-		t.Error(err)
-	}
+		if ok := s.Has(key); !ok {
+			t.Errorf("expected to have key %s", key)
+		}
 
-	c, err := io.ReadAll(f)
-	if err != nil {
-		t.Error(err)
-	}
+		f, err := s.Read(key)
+		if err != nil {
+			t.Error(err)
+		}
 
-	if string(c) != string(data) {
-		t.Errorf("want %s; have %s", data, c)
-	}
+		c, err := io.ReadAll(f)
+		if err != nil {
+			t.Error(err)
+		}
 
-	s.Delete(key)
+		if string(c) != string(data) {
+			t.Errorf("want %s; have %s", data, c)
+		}
+
+		if err := s.Delete(key); err != nil {
+			t.Error(err)
+		}
+
+		// after delete we need to retest that there is no key
+		if ok := s.Has(key); ok {
+			t.Errorf("expected not to have key %s", key)
+		}
+	}
 
 }
 
 func TestDelete(t *testing.T) {
-	storeOpts := StoreOpts{
-		pathTransformFunc: CASPathTransportFunc,
-	}
-	s := NewStore(storeOpts)
+	s := createNewStore()
+	defer tearDown(t, s)
 
 	key := "randkomTestingKeviu34f09j490fj94f3y"
 	data := []byte("this is the actual contents to be written to file")
@@ -67,5 +74,18 @@ func TestDelete(t *testing.T) {
 
 	if err := s.Delete(key); err != nil {
 		t.Error(key)
+	}
+}
+
+func createNewStore() *Store {
+	opts := StoreOpts{
+		pathTransformFunc: CASPathTransportFunc,
+	}
+	return NewStore(opts)
+}
+
+func tearDown(t *testing.T, s *Store) {
+	if err := s.Clear(); err != nil {
+		t.Error(err)
 	}
 }
