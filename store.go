@@ -14,6 +14,7 @@ import (
 
 type PathTransportFunc func(string) PathKey
 
+// Content Adrresable storage
 func CASPathTransportFunc(key string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashString := hex.EncodeToString(hash[:])
@@ -63,10 +64,7 @@ func (s *Store) Has(key string) bool {
 	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
 
 	_, err := os.Stat(fullPathWithRoot)
-	if errors.Is(err, os.ErrNotExist) {
-		return false
-	}
-	return true
+	return !errors.Is(err, os.ErrNotExist)
 }
 
 type StoreOpts struct {
@@ -125,6 +123,10 @@ func (s *Store) readStream(key string) (io.ReadCloser, error) {
 	pathKey := s.pathTransformFunc(key)
 	fullPathWithRoot := fmt.Sprintf("%s/%s", s.Root, pathKey.FullPath())
 	return os.Open(fullPathWithRoot)
+}
+
+func (s *Store) Write(key string, r io.Reader) error {
+	return s.writeStream(key, r)
 }
 
 func (s *Store) writeStream(key string, r io.Reader) error {
