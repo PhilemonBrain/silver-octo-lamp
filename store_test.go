@@ -9,7 +9,7 @@ import (
 
 func TestPathTransformFunc(t *testing.T) {
 	key := "randkomTestingKeviu34f09j490fj94f3y"
-	pathKey := CASPathTransportFunc(key)
+	pathKey := CASPathTransformFunc(key)
 	expectedOriginalKey := "bbe5751b6b689f4ad49821a96404996dd0ddf90f"
 	expectedPathName := "bbe57/51b6b/689f4/ad498/21a96/40499/6dd0d/df90f"
 	if pathKey.PathName != expectedPathName {
@@ -79,7 +79,7 @@ func TestDelete(t *testing.T) {
 
 func createNewStore() *Store {
 	opts := StoreOpts{
-		pathTransformFunc: CASPathTransportFunc,
+		pathTransformFunc: CASPathTransformFunc,
 	}
 	return NewStore(opts)
 }

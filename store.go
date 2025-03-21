@@ -12,10 +12,10 @@ import (
 	"strings"
 )
 
-type PathTransportFunc func(string) PathKey
+type PathTransformFunc func(string) PathKey
 
 // Content Adrresable storage
-func CASPathTransportFunc(key string) PathKey {
+func CASPathTransformFunc(key string) PathKey {
 	hash := sha1.Sum([]byte(key))
 	hashString := hex.EncodeToString(hash[:])
 
@@ -70,7 +70,7 @@ func (s *Store) Has(key string) bool {
 type StoreOpts struct {
 	// Root is the base folder for all files and folders to be saved
 	Root              string
-	pathTransformFunc PathTransportFunc
+	pathTransformFunc PathTransformFunc
 }
 
 var DefaultPathTransformFunc = func(key string) PathKey {
